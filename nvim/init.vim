@@ -1,7 +1,8 @@
 " Install vim-plug if not found
-if empty(glob('~/.vim/autoload/plug.vim'))
-  silent !curl -fLo ~/.vim/autoload/plug.vim --create-dirs
-    \ https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+let data_dir = has('nvim') ? stdpath('data') . '/site' : '~/.vim'
+if empty(glob(data_dir . '/autoload/plug.vim'))
+  silent execute '!curl -fLo '.data_dir.'/autoload/plug.vim --create-dirs  https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+  autocmd VimEnter * PlugInstall --sync | source $MYVIMRC
 endif
 
 " Run PlugInstall if there are missing plugins
@@ -9,23 +10,18 @@ autocmd VimEnter * if len(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
   \| PlugInstall --sync | source $MYVIMRC
 \| endif
 
-if has('nvim')
-	" Specify a directory for plugins
-  call plug#begin(stdpath('data') . '/plugged')
-else
-	" Specify a directory for plugins
-  call plug#begin('~/.vim/plugged')
-endif
+" Specify a directory for plugins
+call plug#begin(has('nvim') ? stdpath('data') . '/plugged' : '~/.vim/plugged')
 
-if has('nvim')
-  "Plug 'neoclide/coc.nvim', {'branch': 'release'}
-  Plug 'kaicataldo/material.vim', { 'branch': 'main' }
-endif
-"#Plug 'neovim/nvim-lspconfig'
+" Install Plugins
+Plug 'kaicataldo/material.vim', has('nvim') ? {} : { 'on': [] }
+
+" Language Server
 Plug 'prabirshrestha/vim-lsp'
 Plug 'mattn/vim-lsp-settings'
 Plug 'prabirshrestha/asyncomplete.vim'
 Plug 'prabirshrestha/asyncomplete-lsp.vim'
+
 "Plug 'ryanoasis/vim-devicons'
 "Plug 'mzlogin/vim-markdown-toc'
 "Plug 'norcalli/nvim-colorizer.lua'
@@ -37,7 +33,6 @@ Plug 'prabirshrestha/asyncomplete-lsp.vim'
 "Plug 'machakann/vim-highlightedyank'
 "Plug 'tpope/vim-commentary'
 Plug 'scrooloose/nerdtree', { 'on':  'NERDTreeToggle' }
-Plug 'tssm/fairyfloss.vim'
 "Plug 'junegunn/vim-easy-align'
 "Plug 'easymotion/vim-easymotion'
 
@@ -55,6 +50,7 @@ if &term =~ '256color'
   endif
 endif
 
+" Set Theme
 if has('nvim')
   let g:material_theme_style = 'palenight'
   let g:airline_theme = 'material'
