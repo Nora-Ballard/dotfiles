@@ -2,6 +2,9 @@
     name = "Nora Ballard"
     email = "4589305+Nora-Ballard@users.noreply.github.com"
 
+[core]
+    editor = nvim
+
 [credential]
         helper = cache --timeout=43200
 
@@ -17,7 +20,17 @@
     prompt = true
 [mergetool "nvimdiff"]
     cmd = "nvim -d \"$LOCAL\" \"$REMOTE\" \"$MERGED\" -c 'wincmd w' -c 'wincmd J'"
-    
+[color]
+    status = auto
+    diff = auto
+    branch = auto
+    interactive = auto
+    grep = auto
+    ui = auto
+[hub]
+    protocol = https
+[github]
+    user = nora-ballard
     
 [include]
         path = ~/.gitconfig_local
