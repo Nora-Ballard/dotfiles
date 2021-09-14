@@ -1,0 +1,2 @@
+# Allow single tab completion instead of requiring a double tab
+set show-all-if-ambiguous on

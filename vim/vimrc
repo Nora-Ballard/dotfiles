@@ -1,7 +1,27 @@
+" XDG Paths
+" https://wiki.archlinux.org/title/XDG_Base_Directory
+set runtimepath^=$XDG_CONFIG_HOME/vim
+set runtimepath+=$XDG_DATA_HOME/vim
+set runtimepath+=$XDG_CONFIG_HOME/vim/after
+
+set packpath^=$XDG_DATA_HOME/vim,$XDG_CONFIG_HOME/vim
+set packpath+=$XDG_CONFIG_HOME/vim/after,$XDG_DATA_HOME/vim/after
+
+let g:netrw_home = $XDG_DATA_HOME."/vim"
+call mkdir($XDG_DATA_HOME."/vim/spell", 'p')
+set viewdir=$XDG_DATA_HOME/vim/view | call mkdir(&viewdir, 'p')
+
+set backupdir=$XDG_CACHE_HOME/vim/backup | call mkdir(&backupdir, 'p')
+set directory=$XDG_CACHE_HOME/vim/swap   | call mkdir(&directory, 'p')
+set undodir=$XDG_CACHE_HOME/vim/undo     | call mkdir(&undodir,   'p')
+
+if !has('nvim') | set viminfofile=$XDG_CACHE_HOME/vim/viminfo | endif
+
+
 " Install vim-plug if not found
 let data_dir = '~/.vim'
-if empty(glob(data_dir . '/autoload/plug.vim'))
-  silent execute '!curl -fLo '.data_dir.'/autoload/plug.vim --create-dirs  https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+if empty(glob(g:netrw_home. '/autoload/plug.vim'))
+  silent execute '!curl -fLo '.g:netrw_home.'/autoload/plug.vim --create-dirs  https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
 endif
 
 " Run PlugInstall if there are missing plugins
@@ -10,7 +30,7 @@ autocmd VimEnter * if len(filter(values(g:plugs), '!isdirectory(v:val.dir)'))
 \| endif
 
 " Specify a directory for plugins
-call plug#begin(has('nvim') ? stdpath('data') . '/plugged' : '~/.vim/plugged')
+call plug#begin(g:netrw_home . '/plugged')
 
 " *** Install Plugins ***
 Plug 'pangloss/vim-javascript' | Plug 'kaicataldo/material.vim'

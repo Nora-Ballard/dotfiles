@@ -9,6 +9,9 @@
 
 [credential]
         helper = cache --timeout=43200
+[gpg]
+    x509.program = smimesign
+    format = x509
 
 [diff]
     tool = nvimdiff

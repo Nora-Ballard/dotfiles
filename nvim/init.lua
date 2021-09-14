@@ -10,7 +10,7 @@ vim.api.nvim_exec(
 [[
   augroup Packer
     autocmd!
-    autocmd BufWritePost init.lua PackerSync
+    autocmd BufWritePost init.lua PackerCompile
   augroup end
 ]], false)
 
@@ -159,8 +159,23 @@ do return require('packer').startup({function(use)
       },
 
       config   = function() 
-        -- The nvim-cmp almost supports LSP's capabilities so You should advertise it to LSP servers..
+        -- Advertize nvim-cmp capabilities to the LSP servers
         local capabilities = vim.lsp.protocol.make_client_capabilities()
+        capabilities.textDocument.completion.completionItem.documentationFormat = { 'markdown', 'plaintext' }
+        capabilities.textDocument.completion.completionItem.snippetSupport = true
+        capabilities.textDocument.completion.completionItem.preselectSupport = true
+        capabilities.textDocument.completion.completionItem.insertReplaceSupport = true
+        capabilities.textDocument.completion.completionItem.labelDetailsSupport = true
+        capabilities.textDocument.completion.completionItem.deprecatedSupport = true
+        capabilities.textDocument.completion.completionItem.commitCharactersSupport = true
+        capabilities.textDocument.completion.completionItem.tagSupport = { valueSet = { 1 } }
+        capabilities.textDocument.completion.completionItem.resolveSupport = {
+          properties = {
+            'documentation',
+            'detail',
+            'additionalTextEdits',
+          },
+        }
         capabilities = require('cmp_nvim_lsp').update_capabilities(capabilities)
         
 
@@ -244,33 +259,38 @@ do return require('packer').startup({function(use)
         end
 
         -- LS: Terraform
-        if vim.fn.executable('terraform-ls') == 1 then
+        -- if vim.fn.executable('terraform-ls') == 1 then
           -- https://github.com/hashicorp/terraform-ls
           --
           require('lspconfig').terraformls.setup {
-            cmd       = { "terraform-ls", "serve" },
+            cmd       = { "docker", "run", "--rm", "-i", "homelab:latest", "terraform-ls", "serve" },
             filetypes = { "terraform" },
             capabilities = capabilities,
             on_attach = on_attach,
           }
-        end
+        -- end
 
         -- LS: Yaml
-        if vim.fn.executable('yaml-language-server') == 1 then
+        -- if vim.fn.executable('docker') == 1 then
           -- Install:  yarn global add yaml-language-server
           -- https://github.com/redhat-developer/yaml-language-server
           --
+          vim.lsp.set_log_level("debug")
           require('lspconfig').yamlls.setup {
-            cmd       = { "yaml-language-server", "--stdio" },
+            cmd       = { "docker", "run", "--rm", "-i", "quay.io/redhat-developer/yaml-language-server:latest" },
             filetypes = { "yaml" },
-            settings  = {
-              redhat  = { telemetry   = { enabled = false }},
-              yaml    = { schemaStore = { enable = false }},
+            settings = {
+              yaml    = { 
+                schemaStore    = { enable = false },
+                trace          = { server = "verbose" },
+                -- schemaDownload = { enable = true },
+                validate = true,
+              },
             },
             capabilities = capabilities,
             on_attach = on_attach,
           }
-        end
+        -- end
 
         local nvim_lsp = require('lspconfig')
         local on_attach = function(_, bufnr)
@@ -296,10 +316,27 @@ do return require('packer').startup({function(use)
           vim.api.nvim_buf_set_keymap(bufnr, 'n', '<leader>q',  '<cmd>lua vim.lsp.diagnostic.set_loclist()<CR>', opts)
           vim.api.nvim_buf_set_keymap(bufnr, 'n', '<leader>so', [[<cmd>lua require('telescope.builtin').lsp_document_symbols()<CR>]], opts)
           vim.cmd [[ command! Format execute 'lua vim.lsp.buf.formatting()' ]]
+
         end
 
         
+        vim.lsp.handlers['textDocument/publishDiagnostics'] = vim.lsp.with(vim.lsp.diagnostic.on_publish_diagnostics, {
+          virtual_text     = false,        -- Disable Virtual Text (in line error message)
+          signs            = true,         -- Show Signs (Default)
+          underline        = true,         -- Underline (Default)
+          update_in_insert = true,         -- Enable updating in insert mode
+        })
 
+        -- Change diagnostic symbols in the sign column (gutter)
+        local signs = { Error = " ", Warning = " ", Hint = " ", Information = " " }
+
+        for type, icon in pairs(signs) do
+          local hl = "LspDiagnosticsSign" .. type
+          vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = "" })
+        end
+
+        -- Show line diagnostics in hover window
+        vim.cmd [[autocmd CursorHold,CursorHoldI * lua vim.lsp.diagnostic.show_line_diagnostics({focusable=false})]]
 
       end,
     },
@@ -314,7 +351,8 @@ do return require('packer').startup({function(use)
         'onsails/lspkind-nvim',     -- pictograms: vscode-like
       },
       after = {
-        'lspkind-nvim'
+        'nvim-lspconfig',
+        'lspkind-nvim',
       },
       config   = function () 
         -- Set completeopt to have a better completion experience
@@ -326,8 +364,14 @@ do return require('packer').startup({function(use)
         -- Setup CMP
         local cmp = require 'cmp'
         cmp.setup {
-          snippet = { expand = function(args) vim.fn["vsnip#anonymous"](args.body) end},
+          snippet = {
+            expand = function(args)
+              require('luasnip').lsp_expand(args.body)
+            end,
+          },
           mapping = {
+            ['<C-j>']     = cmp.mapping.select_prev_item(),
+            ['<C-k>']     = cmp.mapping.select_next_item(), 
             ['<C-y>']     = cmp.mapping.confirm({ select = true }),
             ['<C-d>']     = cmp.mapping.scroll_docs(-4),
             ['<C-f>']     = cmp.mapping.scroll_docs(4),
@@ -357,10 +401,10 @@ do return require('packer').startup({function(use)
             end,
           },
           sources = {
-            { name = 'buffer'   },
             { name = 'nvim_lsp' },
             { name = 'nvim_lua' },
             { name = 'luasnip'  },
+            { name = 'buffer'   },
           },
           formatting = {
             format = function(entry, vim_item)
@@ -398,7 +442,13 @@ do return require('packer').startup({function(use)
 
   use { -- Trouble: Problem List
     [[folke/trouble.nvim]],
-    requires = 'kyazdani42/nvim-web-devicons',
+    after    = {
+      'nvim-lspconfig',
+    },
+    requires = {
+      'kyazdani42/nvim-web-devicons',
+      'folke/lsp-colors.nvim',
+    },
     config   = function() require("trouble").setup {
         mode = "lsp_workspace_diagnostics",    -- "lsp_workspace_diagnostics", "lsp_document_diagnostics", "quickfix", "lsp_references", "loclist"
         position         = "bottom",           -- position of the list can be: bottom, top, left, right
@@ -556,6 +606,15 @@ do return require('packer').startup({function(use)
   use { -- LuaLine: Status Bar
     [[hoob3rt/lualine.nvim]],
     config = function() 
+      local function lsp_buf_clients()
+        buf_clients = {}
+        vim.tbl_map(
+          function(client) table.insert(buf_clients, client.name) end, 
+          vim.lsp.buf_get_clients()
+        )
+        return table.concat(buf_clients, ", ")
+
+      end
       local function indent() 
         if (vim.opt.expandtab:get()) then et = "Spaces" else et = "Tabs" end
         return string.format('%s: %s', et, (vim.opt.shiftwidth:get()))
@@ -582,6 +641,7 @@ do return require('packer').startup({function(use)
                       { indent     },
                       { 'encoding' },
                       { 'fileformat', icons_enabled = false },
+                      { lsp_buf_clients },
                       { 'filetype' },
           },
           lualine_y = {''},
